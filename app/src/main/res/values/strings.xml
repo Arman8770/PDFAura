@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">PDF Aura</string>
+    <string name="pdf_name">PDF Name</string>
+    <string name="not_now" />
+    <string name="open_setting" />
+    <string name="allow_access_detail" />
+    <string name="allow_access" />
+</resources>
