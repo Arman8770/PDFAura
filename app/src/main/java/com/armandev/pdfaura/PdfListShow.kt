@@ -12,6 +12,8 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.provider.Settings
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.SearchView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -22,7 +24,6 @@ import androidx.core.database.getStringOrNull
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.gms.ads.*
-import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import java.io.File
 
@@ -31,28 +32,35 @@ import java.io.File
 class PdfListShow : AppCompatActivity(){
 
     private lateinit var recyclerView: RecyclerView
+    private lateinit var adapter:PdfViewAdapter
     lateinit var adView: AdView
-    private lateinit var searchView:SearchView
+    companion object{
+        var tempList = ArrayList<PDFdata>()
+    }
 
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_pdf_list_show)
-        supportActionBar!!.hide()
+
         recyclerView = findViewById(R.id.rView)
 
-        //For search
-        searchView = findViewById(R.id.searchView)
-        searchView.clearFocus()
+
+        //request
+        requestReadExternalStoragePermission()
 
         //admob test
         adView = findViewById(R.id.adView)
-        requestReadExternalStoragePermission()
         MobileAds.initialize(this)
         banner()
-
+        adapter = PdfViewAdapter()
+        recyclerView.layoutManager = LinearLayoutManager(this)
+        recyclerView.setHasFixedSize(true)
+        recyclerView.setItemViewCacheSize(10)
+        adapter.addData(tempList)
+        recyclerView.adapter = adapter
+        adapter.notifyDataSetChanged()
     }
-
 
 
     fun banner(){
@@ -193,7 +201,7 @@ class PdfListShow : AppCompatActivity(){
         val projections =
             arrayOf(
                 MediaStore.Files.FileColumns._ID,
-                MediaStore.Files.FileColumns.DATA, //TODO: Use URI instead of this.. see official docs for this field
+                MediaStore.Files.FileColumns.DATA,
                 MediaStore.Files.FileColumns.DISPLAY_NAME,
                 MediaStore.Files.FileColumns.DATE_MODIFIED,
                 MediaStore.Files.FileColumns.MIME_TYPE,
@@ -229,7 +237,7 @@ class PdfListShow : AppCompatActivity(){
 
     private fun loadAllFilesToDatabase() {
         val cursor = getAllMediaFilesCursor()
-        val tempList = ArrayList<PDFdata>()
+
 
         if (true == cursor?.moveToFirst()) {
             val idCol = cursor.getColumnIndexOrThrow(MediaStore.Files.FileColumns._ID)
@@ -261,9 +269,24 @@ class PdfListShow : AppCompatActivity(){
             } while (cursor.moveToNext())
         }
         cursor?.close()
-        recyclerView.layoutManager = LinearLayoutManager(this)
-        recyclerView.setHasFixedSize(true)
-        recyclerView.setItemViewCacheSize(10)
-        recyclerView.adapter = PdfViewAdapter(tempList)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+
+        menuInflater.inflate(R.menu.search_menu,menu)
+        val item: MenuItem? = menu?.findItem(R.id.searchPDF)
+        val searchView : SearchView? = item?.actionView as SearchView?
+        searchView!!.queryHint = "Search PDF"
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String?): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String?): Boolean {
+                adapter.filter.filter(newText)
+                return false
+            }
+        })
+        return super.onCreateOptionsMenu(menu)
     }
 }

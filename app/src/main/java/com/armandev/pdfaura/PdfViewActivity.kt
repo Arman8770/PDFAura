@@ -18,11 +18,13 @@ class PdfViewActivity : AppCompatActivity() {
         val pdfUri = intent.getStringExtra("fileurl").toString()
         val pdfPath = intent.getStringExtra("filepath").toString()
 
-        val file:File = File(pdfPath)
+        val file = File(pdfPath)
         val path:Uri = Uri.fromFile(file)
 
         pdfView = findViewById(R.id.pdfView)
-        pdfView.fromUri(path).load()
+        pdfView.fromUri(path)
+            .load()
+
 
 
     }
