@@ -12,24 +12,21 @@ import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
 
-open class PdfViewAdapter : RecyclerView.Adapter<PdfViewAdapter.PdfViewHolder>(), Filterable {
+open class PdfViewAdapter : RecyclerView.Adapter<PdfViewAdapter.PdfViewHolder>, Filterable {
     var tempList: ArrayList<PDFdata> = ArrayList()
     var backup :ArrayList<PDFdata> = ArrayList()
 
-    var onItemClick: ((PDFdata) -> Unit)? = null
+    constructor(tempList: ArrayList<PDFdata>) : super() {
+        this.tempList = tempList
+        backup = ArrayList(tempList)
+    }
 
     inner class PdfViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val pdfName: TextView = itemView.findViewById(R.id.pdf_nameView)
         val pdfSize: TextView = itemView.findViewById(R.id.txtpdfSize)
         val pdfDate:TextView = itemView.findViewById(R.id.txtpdfDate)
         val pdfTouch: RelativeLayout = itemView.findViewById(R.id.pdfTouch)
-        init {
-            itemView.setOnClickListener{
-                onItemClick?.invoke(backup[adapterPosition])
-            }
-        }
     }
 
 
@@ -43,16 +40,10 @@ open class PdfViewAdapter : RecyclerView.Adapter<PdfViewAdapter.PdfViewHolder>()
         return tempList.size
     }
 
-    @SuppressLint("NotifyDataSetChanged")
-    fun addData(list: List<PDFdata>) {
-        tempList = list as ArrayList<PDFdata>
-        backup = list
-        notifyDataSetChanged()
-    }
+
 
     override fun onBindViewHolder(holder: PdfViewHolder, position: Int) {
         holder.pdfName.text = tempList[position].title
-
         val date =  convertLongToTime(tempList[position].date)
 
         holder.pdfDate.text = date
@@ -92,7 +83,7 @@ open class PdfViewAdapter : RecyclerView.Adapter<PdfViewAdapter.PdfViewHolder>()
         override fun performFiltering(keyWord: CharSequence?): FilterResults {
             val filteredList = ArrayList<PDFdata>()
 
-            if (keyWord.toString().isEmpty()) {
+            if (keyWord.toString().isEmpty() || keyWord?.length==0) {
                 filteredList.addAll(backup)
             } else{
                 for(obj in backup){
@@ -101,11 +92,12 @@ open class PdfViewAdapter : RecyclerView.Adapter<PdfViewAdapter.PdfViewHolder>()
                     }
                 }
             }
-            var results = FilterResults()
+            val results = FilterResults()
             results.values = filteredList
             return results
         }
 
+        @SuppressLint("NotifyDataSetChanged")
         override fun publishResults(constraint: CharSequence?, results: FilterResults?) {
             tempList.clear()
             tempList.addAll(results?.values as ArrayList<PDFdata>)

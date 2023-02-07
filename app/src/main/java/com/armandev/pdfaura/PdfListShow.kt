@@ -1,6 +1,7 @@
 package com.armandev.pdfaura
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.ContentValues.TAG
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -38,6 +39,7 @@ class PdfListShow : AppCompatActivity(){
         var tempList = ArrayList<PDFdata>()
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     @RequiresApi(Build.VERSION_CODES.M)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,11 +55,11 @@ class PdfListShow : AppCompatActivity(){
         adView = findViewById(R.id.adView)
         MobileAds.initialize(this)
         banner()
-        adapter = PdfViewAdapter()
+
         recyclerView.layoutManager = LinearLayoutManager(this)
         recyclerView.setHasFixedSize(true)
         recyclerView.setItemViewCacheSize(10)
-        adapter.addData(tempList)
+        adapter = PdfViewAdapter(tempList)
         recyclerView.adapter = adapter
         adapter.notifyDataSetChanged()
     }
@@ -263,7 +265,7 @@ class PdfListShow : AppCompatActivity(){
                             date = dateTime, type = type, size = size, pdfUri = Furi, path = path)
                         tempList.add(allFile)
                     }
-                }catch (e:Exception){
+                }catch (_:Exception){
 
                 }
             } while (cursor.moveToNext())
@@ -281,9 +283,9 @@ class PdfListShow : AppCompatActivity(){
             override fun onQueryTextSubmit(query: String?): Boolean {
                 return false
             }
-
             override fun onQueryTextChange(newText: String?): Boolean {
                 adapter.filter.filter(newText)
+                adapter.notifyDataSetChanged()
                 return false
             }
         })

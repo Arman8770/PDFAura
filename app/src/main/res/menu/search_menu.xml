@@ -5,6 +5,7 @@
     <item android:title="Search"
         android:id="@+id/searchPDF"
         android:icon="@drawable/outline_search_24"
-        app:showAsAction="always"
-        app:actionViewClass="android.widget.SearchView" />
+        app:actionViewClass="android.widget.SearchView"
+        app:showAsAction="ifRoom"
+         />
 </menu>
