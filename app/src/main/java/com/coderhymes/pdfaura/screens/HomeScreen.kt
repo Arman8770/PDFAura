@@ -25,7 +25,6 @@ class HomeScreen : AppCompatActivity() {
         mAdView.loadAd(adRequest)
 
         // Get the NavHostFragment using the ID of the fragment
-        // Get the NavHostFragment using the ID of the fragment
         val navHostFragment = supportFragmentManager.findFragmentById(R.id.nav_host_fragment) as NavHostFragment
         // Access the NavController
         val navController = navHostFragment.navController

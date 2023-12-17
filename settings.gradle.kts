@@ -11,8 +11,10 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         jcenter()
+        maven { setUrl("https://jitpack.io") }
     }
 }
+
 
 rootProject.name = "PDF Aura"
 include(":app")
