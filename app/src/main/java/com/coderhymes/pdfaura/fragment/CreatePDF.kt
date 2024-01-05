@@ -1,5 +1,6 @@
 package com.coderhymes.pdfaura.fragment
 
+import android.content.Intent
 import android.database.sqlite.SQLiteConstraintException
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -14,6 +15,8 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import androidx.room.Room
 import com.coderhymes.pdfaura.R
 import com.coderhymes.pdfaura.adapter.SelectedImagesAdapter
@@ -23,10 +26,10 @@ import com.coderhymes.pdfaura.databinding.FragmentCreatePdfBinding
 import com.namangarg.androiddocumentscannerandfilter.DocumentFilter
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class CreatePDF : Fragment() {
 
-    private lateinit var adapter: SelectedImagesAdapter
     private lateinit var binding: FragmentCreatePdfBinding
     private lateinit var oneIV: ImageView
     private lateinit var twoIV: ImageView
@@ -34,23 +37,20 @@ class CreatePDF : Fragment() {
     private lateinit var fourIV: ImageView
     private lateinit var fiveIV: ImageView
     private lateinit var sixIV: ImageView
-    private lateinit var originalIV: ImageView
 
     private lateinit var bmp: Bitmap
-    private lateinit var onebmp: Bitmap
-    private lateinit var twobmp: Bitmap
-    private lateinit var threebmp: Bitmap
-    private lateinit var fourbmp: Bitmap
-    private lateinit var fivebmp: Bitmap
-    private lateinit var sixbmp: Bitmap
+//    private lateinit var onebmp: Bitmap
+//    private lateinit var twobmp: Bitmap
+//    private lateinit var threebmp: Bitmap
+//    private lateinit var fourbmp: Bitmap
+//    private lateinit var fivebmp: Bitmap
+//    private lateinit var sixbmp: Bitmap
 
     private val selectedImageUris = mutableListOf<Uri>()
     private lateinit var db: AppDatabase
 
     private val pickMultipleMedia =
         registerForActivityResult(ActivityResultContracts.PickMultipleVisualMedia()) { uris ->
-            // Callback is invoked after the user selects media items or closes the
-            // photo picker.
             if (uris.isNotEmpty()) {
                 Log.d("PhotoPicker", "Number of items selected: ${uris.size}")
                 handleSelectedMedia(uris)
@@ -70,16 +70,12 @@ class CreatePDF : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        adapter = SelectedImagesAdapter(selectedImageUris) { }
-        binding.imgRecyclerView.adapter = adapter
-
         initializeImageViews()
-
+        pickMultipleMedia()
         binding.floatingActionButton.setOnClickListener {
             pickMultipleMedia()
         }
-
-        setFilterOnClickListeners()
+        geAllMedia()
     }
 
     private fun initializeImageViews() {
@@ -89,7 +85,8 @@ class CreatePDF : Fragment() {
         fourIV = binding.idIVFour
         fiveIV = binding.idIVFive
         sixIV = binding.idIVSix
-//        originalIV = binding.idIVOriginalImage
+
+        setFilterOnClickListeners()
     }
 
     private fun pickMultipleMedia() {
@@ -98,103 +95,114 @@ class CreatePDF : Fragment() {
 
     private fun handleSelectedMedia(uris: List<Uri>) {
         lifecycleScope.launch(Dispatchers.IO) {
-            // Clear existing selected image URIs and add new ones
             selectedImageUris.clear()
             selectedImageUris.addAll(uris)
 
-            // Create and initialize the database instance
             db = Room.databaseBuilder(
                 requireContext(),
                 AppDatabase::class.java, "omgimages"
             ).build()
 
-            // Get image DAO
             val imageDao = db.imageDao()
 
-            // Convert URIs to ImageEntity objects
             val images = selectedImageUris.map { uri ->
+                val flag = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                requireContext().contentResolver.takePersistableUriPermission(uri, flag)
                 ImageEntity(uri = uri.toString())
             }
 
             try {
-                // Loop through the images and insert or update them
                 for (image in images) {
                     val existingImage = imageDao.findByName(image.uri!!)
                     if (existingImage == null) {
-                        // If the image doesn't exist, insert it
                         imageDao.insert(image)
                     } else {
-                        // If the image already exists, update its data
                         image.apply {
-                            Iid = existingImage.Iid // Ensure the primary key is retained
+                            Iid = existingImage.Iid
                         }
                         imageDao.update(image)
                     }
                 }
-                logAllImages()
+                geAllMedia()
 
             } catch (e: SQLiteConstraintException) {
-                // Log the exception and handle it appropriately
                 Log.e("SQLiteException", "Error inserting/updating data: ${e.message}")
-                // Additional error handling code goes here
+            } finally {
+                db.close()
             }
-
-            db.close()
         }
     }
 
+    private fun getAllImagesFromDatabase(): List<ImageEntity> {
+        if (!::db.isInitialized) {
+            db = Room.databaseBuilder(
+                requireContext(),
+                AppDatabase::class.java, "omgimages"
+            ).build()
+        }
+        return db.imageDao().getAll()
+    }
 
-    private fun logAllImages() {
+    private fun geAllMedia() {
         lifecycleScope.launch(Dispatchers.IO) {
-            // Check if db is not null before accessing it
-            if (db != null) {
-                var images = db!!.imageDao().getAll()
-                for (image in images) {
-                    Log.d("ImageEntity", "Id: ${image.Iid}, Uri: ${image.uri}")
-                }
-                adapter.updateData(images)
-            } else {
-                Log.e("CreatePDF", "Error: db is null")
+            val imagesFromDatabase = getAllImagesFromDatabase()
+            withContext(Dispatchers.Main) {
+                displayImages(imagesFromDatabase)
             }
         }
     }
 
-
+    private fun displayImages(imagesFromDatabase: List<ImageEntity>) {
+        val recyclerView: RecyclerView = binding.imgRecyclerView
+        val imageAdapter = SelectedImagesAdapter(images = imagesFromDatabase)
+        recyclerView.adapter = imageAdapter
+        recyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
+    }
 
     private fun setFilterOnClickListeners() {
         val documentFilter = DocumentFilter()
         bmp = BitmapFactory.decodeResource(resources, R.drawable.dog)
 
+        oneIV.setOnClickListener {
+            onFilterSelected(0)
+        }
         documentFilter.getGreyScaleFilter(bmp) { greyScaledBitmap ->
             twoIV.setImageBitmap(greyScaledBitmap)
+            twoIV.setOnClickListener {
+                onFilterSelected(1) // Pass the filter index to the listener
+            }
         }
 
         documentFilter.getBlackAndWhiteFilter(bmp) { blackAndWhite ->
             threeIV.setImageBitmap(blackAndWhite)
+            threeIV.setOnClickListener {
+                onFilterSelected(2) // Pass the filter index to the listener
+            }
         }
 
         documentFilter.getShadowRemoval(bmp) { getShadowRemoval ->
             sixIV.setImageBitmap(getShadowRemoval)
+            sixIV.setOnClickListener {
+                onFilterSelected(3) // Pass the filter index to the listener
+            }
         }
 
         documentFilter.getMagicFilter(bmp) { getMagicFilter ->
             fourIV.setImageBitmap(getMagicFilter)
+            fourIV.setOnClickListener {
+                onFilterSelected(4) // Pass the filter index to the listener
+            }
         }
 
         documentFilter.getLightenFilter(bmp) { getShadowRemoval ->
             fiveIV.setImageBitmap(getShadowRemoval)
+            fiveIV.setOnClickListener {
+                onFilterSelected(5) // Pass the filter index to the listener
+            }
         }
-
-        // Set original image click listeners
-        setOriginalImageClickListeners()
     }
 
-    private fun setOriginalImageClickListeners() {
-        oneIV.setOnClickListener { originalIV.setImageBitmap(onebmp) }
-        twoIV.setOnClickListener { originalIV.setImageBitmap(twobmp) }
-        threeIV.setOnClickListener { originalIV.setImageBitmap(threebmp) }
-        fourIV.setOnClickListener { originalIV.setImageBitmap(fourbmp) }
-        fiveIV.setOnClickListener { originalIV.setImageBitmap(fivebmp) }
-        sixIV.setOnClickListener { originalIV.setImageBitmap(sixbmp) }
+    private fun onFilterSelected(i: Int) {
+
     }
 }

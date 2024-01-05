@@ -31,17 +31,6 @@
         </service>
 
 
-        <service android:name="com.google.android.gms.metadata.ModuleDependencies"
-            android:enabled="false"
-            android:exported="false"
-            tools:ignore="MissingClass">
-            <intent-filter>
-                <action android:name="com.google.android.gms.metadata.MODULE_DEPENDENCIES" />
-            </intent-filter>
-            <meta-data android:name="photopicker_activity:0:required" android:value="" />
-        </service>
-
-
         <activity
             android:name=".screens.PdfViewActivity"
             android:exported="true" >
@@ -55,7 +44,7 @@
         <!-- Sample AdMob app ID: ca-app-pub-3940256099942544~3347511713 -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3025899404418595~3900601420" />
+            android:value="ca-app-pub-3940256099942544~3347511713" />
 
         <activity
             android:name=".screens.SplashScreen"
@@ -78,8 +67,6 @@
             <!-- <category android:name="android.intent.category.LAUNCHER" /> -->
             <!-- </intent-filter> -->
         </activity>
-
-
 
 
     <meta-data
