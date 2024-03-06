@@ -1,5 +1,7 @@
 package com.coderhymes.pdfaura.fragment
 
+import android.annotation.SuppressLint
+import android.content.Context
 import android.content.Intent
 import android.database.sqlite.SQLiteConstraintException
 import android.graphics.Bitmap
@@ -10,6 +12,8 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Adapter
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -37,15 +41,9 @@ class CreatePDF : Fragment() {
     private lateinit var fourIV: ImageView
     private lateinit var fiveIV: ImageView
     private lateinit var sixIV: ImageView
+    private lateinit var idHSV:HorizontalScrollView
 
     private lateinit var bmp: Bitmap
-//    private lateinit var onebmp: Bitmap
-//    private lateinit var twobmp: Bitmap
-//    private lateinit var threebmp: Bitmap
-//    private lateinit var fourbmp: Bitmap
-//    private lateinit var fivebmp: Bitmap
-//    private lateinit var sixbmp: Bitmap
-
     private val selectedImageUris = mutableListOf<Uri>()
     private lateinit var db: AppDatabase
 
@@ -67,27 +65,21 @@ class CreatePDF : Fragment() {
         return binding.root
     }
 
+    @SuppressLint("NotifyDataSetChanged")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-
-        initializeImageViews()
         pickMultipleMedia()
         binding.floatingActionButton.setOnClickListener {
             pickMultipleMedia()
         }
+        binding.makePDF.setOnClickListener{
+            (binding.imgRecyclerView.adapter as? SelectedImagesAdapter)?.setMakePDF(b = true)
+            binding.imgRecyclerView.adapter?.notifyDataSetChanged()
+        }
         geAllMedia()
     }
 
-    private fun initializeImageViews() {
-        oneIV = binding.idIVOne
-        twoIV = binding.idIVTwo
-        threeIV = binding.idIVThree
-        fourIV = binding.idIVFour
-        fiveIV = binding.idIVFive
-        sixIV = binding.idIVSix
 
-        setFilterOnClickListeners()
-    }
 
     private fun pickMultipleMedia() {
         pickMultipleMedia.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
@@ -124,7 +116,6 @@ class CreatePDF : Fragment() {
                     }
                 }
                 geAllMedia()
-
             } catch (e: SQLiteConstraintException) {
                 Log.e("SQLiteException", "Error inserting/updating data: ${e.message}")
             } finally {
@@ -147,21 +138,49 @@ class CreatePDF : Fragment() {
         lifecycleScope.launch(Dispatchers.IO) {
             val imagesFromDatabase = getAllImagesFromDatabase()
             withContext(Dispatchers.Main) {
-                displayImages(imagesFromDatabase)
+                if (imagesFromDatabase.isNotEmpty()) {
+                    idHSV = binding.idHSV
+                    idHSV.visibility = View.VISIBLE
+                    binding.makePDF.visibility = View.VISIBLE// Check if the list is not empty
+                    val imageUri = imagesFromDatabase[0].uri
+                    val bitmap = loadBitmapFromUri(Uri.parse(imageUri), requireContext())
+
+                    bmp = bitmap
+
+                    oneIV = binding.idIVOne
+                    twoIV = binding.idIVTwo
+                    threeIV = binding.idIVThree
+                    fourIV = binding.idIVFour
+                    fiveIV = binding.idIVFive
+                    sixIV = binding.idIVSix
+                    oneIV.setImageBitmap(bitmap)
+                    twoIV.setImageBitmap(bitmap)
+                    threeIV.setImageBitmap(bitmap)
+                    fourIV.setImageBitmap(bitmap)
+                    fiveIV.setImageBitmap(bitmap)
+                    sixIV.setImageBitmap(bitmap)
+                    setFilterOnClickListeners()
+                    displayImages(imagesFromDatabase)
+                } else {
+                    idHSV = binding.idHSV
+                    idHSV.visibility = View.INVISIBLE
+                    binding.makePDF.visibility = View.INVISIBLE
+                    Log.d("empty Image","gsdfjldsjfkl")
+                }
             }
         }
     }
 
+
     private fun displayImages(imagesFromDatabase: List<ImageEntity>) {
         val recyclerView: RecyclerView = binding.imgRecyclerView
-        val imageAdapter = SelectedImagesAdapter(images = imagesFromDatabase)
+        val imageAdapter = SelectedImagesAdapter(images = imagesFromDatabase,requireContext() ,0,false)
         recyclerView.adapter = imageAdapter
         recyclerView.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
     }
 
     private fun setFilterOnClickListeners() {
         val documentFilter = DocumentFilter()
-        bmp = BitmapFactory.decodeResource(resources, R.drawable.dog)
 
         oneIV.setOnClickListener {
             onFilterSelected(0)
@@ -180,29 +199,44 @@ class CreatePDF : Fragment() {
             }
         }
 
-        documentFilter.getShadowRemoval(bmp) { getShadowRemoval ->
-            sixIV.setImageBitmap(getShadowRemoval)
-            sixIV.setOnClickListener {
+        documentFilter.getMagicFilter(bmp) { getMagicFilter ->
+            fourIV.setImageBitmap(getMagicFilter)
+            fourIV.setOnClickListener {
                 onFilterSelected(3) // Pass the filter index to the listener
             }
         }
 
-        documentFilter.getMagicFilter(bmp) { getMagicFilter ->
-            fourIV.setImageBitmap(getMagicFilter)
-            fourIV.setOnClickListener {
+        documentFilter.getLightenFilter(bmp) { getLightenFilter ->
+            fiveIV.setImageBitmap(getLightenFilter)
+            fiveIV.setOnClickListener {
                 onFilterSelected(4) // Pass the filter index to the listener
             }
         }
 
-        documentFilter.getLightenFilter(bmp) { getShadowRemoval ->
-            fiveIV.setImageBitmap(getShadowRemoval)
-            fiveIV.setOnClickListener {
+        documentFilter.getShadowRemoval(bmp) { getShadowRemoval ->
+            sixIV.setImageBitmap(getShadowRemoval)
+            sixIV.setOnClickListener {
                 onFilterSelected(5) // Pass the filter index to the listener
             }
         }
     }
 
-    private fun onFilterSelected(i: Int) {
+    @SuppressLint("NotifyDataSetChanged")
+    private fun onFilterSelected(index: Int) {
+        (binding.imgRecyclerView.adapter as? SelectedImagesAdapter)?.setFilterIndex(index)
+        binding.imgRecyclerView.adapter?.notifyDataSetChanged()
+    }
 
+    private fun loadBitmapFromUri(uri: Uri, context: Context): Bitmap {
+        Log.d("ImageAdapter2", "loadBitmapFromUri called for URI: $uri")
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            inputStream?.close()
+            bitmap
+        } catch (e: Exception) {
+            e.printStackTrace()
+            BitmapFactory.decodeResource(context.resources, R.drawable.dog)
+        }
     }
 }
